@@ -1,0 +1,81 @@
+---
+- name: Тестовое задание
+  hosts: webserver
+  become: true
+
+  tasks:
+    - name: Обновить список пакетов APT
+      apt:
+        update_cache: yes
+
+    - name: Установить необходимые пакеты
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Добавить GPG-ключ Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Добавить репозиторий Docker
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Установить Docker
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+
+    - name: Убедиться, что Docker запущен
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Скачать Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-{{ ansible_system }}-{{ ansible_architecture | replace('x86_64', 'x86_64') | replace('aarch64', 'arm64') }}"
+        dest: /usr/local/bin/docker-compose
+        mode: "0755"
+    - name: Создать директории для проекта
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /home/{{ ansible_user }}/project/
+        - /home/{{ ansible_user }}/project/nginx
+        - /home/{{ ansible_user }}/project/src
+
+    - name: Скопировать Docker Compose файл
+      copy:
+        src: docker-compose.yml
+        dest: /home/{{ ansible_user }}/project/docker-compose.yml
+
+    - name: Скопировать Dockerfile
+      copy:
+        src: Dockerfile
+        dest: /home/{{ ansible_user }}/project/Dockerfile
+
+    - name: Скопировать конфигурацию Nginx
+      copy:
+        src: nginx/nginx.conf
+        dest: /home/{{ ansible_user }}/project/nginx/nginx.conf
+
+    - name: Скопировать исходные файлы проекта
+      copy:
+        src: src/
+        dest: /home/{{ ansible_user }}/project/src/
+        mode: "0755"
+
+    - name: Запустить проект с Docker Compose
+      command: docker-compose up -d
+      args:
+        chdir: /home/{{ ansible_user }}/project

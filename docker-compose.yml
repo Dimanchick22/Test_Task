@@ -1,0 +1,42 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./src:/var/www/html
+    depends_on:
+      - php
+    networks:
+      - project_default
+
+  php:
+    build: .
+    container_name: php
+    volumes:
+      - ./src:/var/www/html
+    networks:
+      - project_default
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - project_default
+
+volumes:
+  db_data:
+
+networks:
+  project_default:
+    driver: bridge
